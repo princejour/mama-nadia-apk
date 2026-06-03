@@ -1,6 +1,9 @@
 name: Build APK from ZIP
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -16,7 +19,9 @@ jobs:
 
       - name: Show files
         run: |
+          echo "Repository files:"
           ls -la
+          echo "ZIP files:"
           find . -maxdepth 3 -name "*.zip" -type f
 
       - name: Set up Java
@@ -27,7 +32,9 @@ jobs:
 
       - name: Unzip project
         run: |
-          unzip -q project.zip -d extracted
+          ZIP_FILE=$(find . -maxdepth 3 -name "*.zip" -type f | head -n 1)
+          echo "Using ZIP file: $ZIP_FILE"
+          unzip -q "$ZIP_FILE" -d extracted
           PROJECT_DIR=$(find extracted -name "settings.gradle" -type f -printf '%h\n' | head -n 1)
           echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
           echo "Project directory: $PROJECT_DIR"
@@ -35,6 +42,16 @@ jobs:
       - name: Make Gradle executable
         run: chmod +x "$PROJECT_DIR/gradlew"
 
+      - name: Build APK
+        run: |
+          cd "$PROJECT_DIR"
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MamaNadia-debug-apk
+          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
       - name: Build APK
         run: |
           cd "$PROJECT_DIR"
